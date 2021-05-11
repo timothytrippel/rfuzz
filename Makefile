@@ -80,19 +80,21 @@ $(VERILATOR_HARNESS) $(TOML) $(E2ECOV_HARNESS) $(E2ECOV_TOML): $(INSTRUMENTATION
 	mv harness/VerilatorHarness.v $(VERILATOR_HARNESS)
 	mv harness/E2ECoverageHarness.v $(E2ECOV_HARNESS)
 
-
 ################################################################################
 # Verilator Binary Rules
 ################################################################################
 VERILATOR_TB_SRC = $(shell ls verilator/*.hpp verilator/*.cpp verilator/*.h verilator/*.c verilator/meson.build)
 VERILATOR_BUILD = $(BUILD)/v$(DUT)
 
-
 $(FUZZ_SERVER): $(TOML) $(VERILATOR_HARNESS) $(INSTRUMENTED_V) $(VERILATOR_TB_SRC)
-	mkdir -p $(VERILATOR_BUILD)
-	cd $(VERILATOR_BUILD) && meson ../../verilator --buildtype=release \
-	                         -Dtrace=false -Dbuild_dir='$(BUILD)' -Ddut='$(DUT)' \
-	                      && ninja
+	mkdir -p $(VERILATOR_BUILD) && \
+	cd $(VERILATOR_BUILD) && \
+	meson ../../verilator \
+		--buildtype=release \
+		-Dtrace=false \
+		-Dbuild_dir='$(BUILD)' \
+		-Ddut='$(DUT)' && \
+	ninja -v && \
 	mv $(VERILATOR_BUILD)/server $(FUZZ_SERVER)
 
 ################################################################################
@@ -101,21 +103,22 @@ $(FUZZ_SERVER): $(TOML) $(VERILATOR_HARNESS) $(INSTRUMENTED_V) $(VERILATOR_TB_SR
 VERILATOR_E2E_SRC = $(shell ls e2e/*.cpp e2e/meson*)
 VERILATOR_E2E_BUILD = $(BUILD)/v$(DUT).e2e
 
-
 $(E2ECOV): $(TOML) $(VERILATOR_HARNESS) $(INSTRUMENTED_V) $(VERILATOR_E2E_SRC)
-	mkdir -p $(VERILATOR_E2E_BUILD)
-	cd $(VERILATOR_E2E_BUILD) && meson ../../e2e --buildtype=release \
-	                             -Dtrace=false -Dbuild_dir='$(BUILD)' -Ddut='$(DUT)' \
-	                          && ninja
+	mkdir -p $(VERILATOR_E2E_BUILD) && \
+	cd $(VERILATOR_E2E_BUILD) && \
+	meson ../../e2e \
+		--buildtype=release \
+		-Dtrace=false \
+		-Dbuild_dir='$(BUILD)' \
+		-Ddut='$(DUT)' && \
+	ninja -v && \
 	mv $(VERILATOR_E2E_BUILD)/cov $(E2ECOV)
-
 
 ################################################################################
 # Build All Pseudo Target
 ################################################################################
 bin: $(FUZZ_SERVER) $(E2ECOV)
 	echo "done"
-
 
 ################################################################################
 # Fuzz Server Pseudo Target
@@ -135,6 +138,7 @@ env:
 	docker run -it --rm \
 		-v $(shell pwd)/analysis:/src/rfuzz/analysis \
 		-v $(shell pwd)/benchmarks:/src/rfuzz/benchmarks \
+		-v $(shell pwd)/build:/src/rfuzz/build \
 		-v $(shell pwd)/doc:/src/rfuzz/doc \
 		-v $(shell pwd)/e2e:/src/rfuzz/e2e \
 		-v $(shell pwd)/fpga:/src/rfuzz/fpga \
@@ -146,6 +150,7 @@ env:
 		-v $(shell pwd)/verilator:/src/rfuzz/verilator \
 		-v $(shell pwd)/Makefile:/src/rfuzz/Makefile \
 		-v $(shell pwd)/run.sh:/src/rfuzz/run.sh \
+		-v $(shell pwd)/run_vlt_cov.sh:/src/rfuzz/run_vlt_cov.sh \
 		-t rfuzz/env /bin/bash
 
 .PHONY: build-env env instrumentation run
