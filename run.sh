@@ -39,8 +39,11 @@ function check_exit_code() {
 # Set default DUT
 DUT="${DUT:-Sodor3Stage}"
 
+# Cleanup prior builds
+make clean
+
 # Build fuzz server for target DUT
-make bin
+make FIR=${DUT}.fir DUT=$DUT bin
 
 # Build fuzzer
 cd fuzzer
@@ -52,6 +55,7 @@ mkdir /tmp/fpga
 /src/rfuzz/build/${DUT}_server &
 
 # Launch fuzzer
+sleep 1
 rm -rf out
 if [[ -z ${DURATION_MINS-} ]]; then
   cargo run --release -- -c -o out ../build/${DUT}.toml
