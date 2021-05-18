@@ -53,6 +53,19 @@ RUN apt-get install -y \
       python3-matplotlib \
       graphviz
 
+# Install Verilator v4.101
+RUN apt-get install -y \
+      git \
+      autoconf \
+      flex \
+      bison
+RUN cd $SRC && git clone https://github.com/verilator/verilator.git
+RUN cd $SRC/verilator && git checkout 7be343fd7c885359ac29e50e9732509caf64637d
+RUN cd $SRC/verilator && autoconf
+ENV VERILATOR_ROOT=$SRC/verilator
+RUN cd $SRC/verilator && ./configure && make -j 4 && make install
+RUN apt-get remove --purge -y git autoconf flex bison && apt-get autoremove -y
+ 
 # Install SBT
 RUN echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list
 RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823

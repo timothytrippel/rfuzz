@@ -132,7 +132,7 @@ run: $(FUZZ_SERVER) $(E2ECOV)
 # Docker Environment Target
 ################################################################################
 build-env:
-	docker build --no-cache -t rfuzz/env .
+	docker build -t rfuzz/env .
 
 env:
 	docker run -it --rm \
