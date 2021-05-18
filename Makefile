@@ -109,6 +109,7 @@ $(E2ECOV): $(TOML) $(VERILATOR_HARNESS) $(INSTRUMENTED_V) $(VERILATOR_E2E_SRC)
 	meson ../../e2e \
 		--buildtype=release \
 		-Dtrace=false \
+		-Dcoverage=true \
 		-Dbuild_dir='$(BUILD)' \
 		-Ddut='$(DUT)' && \
 	ninja -v && \

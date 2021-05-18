@@ -20,7 +20,7 @@ exe = 'cov'
 # custom verilator target
 verilator_py = find_program('../verilator/verilator.py')
 verilator = dependency('verilator', version: '>= 3.886')
-verilator_defines = ['-DVL_PRINTF=printf', '-DVM_COVERAGE=0', '-DVM_SC=0', '-DVL_USER_FINISH']
+verilator_defines = ['-DVL_PRINTF=printf', '-DVM_SC=0', '-DVL_USER_FINISH']
 verilator_warnings = ['-Wno-char-subscripts', '-Wno-sign-compare',
                       '-Wno-uninitialized', '-Wno-unused-but-set-variable',
                       '-Wno-unused-parameter', '-Wno-unused-variable']
@@ -39,6 +39,13 @@ if get_option('trace')
 	                    'V@0@__Trace__Slow.cpp'.format(toplevel)]
 else
 	verilator_cmd = [verilator_py]
+endif
+if get_option('coverage')
+	verilator_cmd += ['--coverage']
+	verilator_defines += ['-DVM_COVERAGE=1']
+	verilator_files += ['verilated_cov.cpp']
+else
+	verilator_defines += ['-DVM_COVERAGE=0']
 endif
 # TODO: potentially change to be a `generator`: http://mesonbuild.com/Generating-sources.html
 verilator_src = custom_target('verilator',

@@ -30,7 +30,9 @@ GeneratedTraceFiles = ['V{}__Trace.cpp', 'V{}__Trace__Slow.cpp']
 
 # Some Magic Library Files
 VerilatorLibPath = 'include'
-VerilatorLibFiles = ['verilated_vcd_c.cpp', 'verilated.cpp']
+VerilatorLibFiles = [
+    'verilated_vcd_c.cpp', 'verilated.cpp', 'verilated_cov.cpp'
+]
 
 ################################################################################
 
@@ -82,9 +84,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='small wrapper around verilator to be used with meson')
     parser.add_argument('--trace',
-                        help='enable tracing, samle as verilators flag',
+                        help='enable tracing, same as verilators flag',
                         action='store_const',
                         const=True)
+    parser.add_argument(
+        '--coverage',
+        help='enable HDL line coverage tracing, same as verilators flag',
+        action='store_const',
+        const=True)
     parser.add_argument('--print-out',
                         help='print the files that were created',
                         action='store_const',
@@ -141,8 +148,11 @@ if __name__ == '__main__':
     # set Verilator trace flag, if VCD tracing is enabled
     TraceFlag = ['--trace'] if args.trace else []
 
+    # set Verilator coverage flag, if VCD tracing is enabled
+    CoverageFlag = ['--coverage'] if args.coverage else []
+
     # run Verilator to generate simulation binary
-    cmd = Verilator + TraceFlag + DefaultFlags + include_flags + [
+    cmd = Verilator + TraceFlag + CoverageFlag + DefaultFlags + include_flags + [
         '-Mdir', out, verilog
     ]
     cmd = ' '.join(cmd)  # TODO: this should not be necessary!
