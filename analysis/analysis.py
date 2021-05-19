@@ -8,7 +8,9 @@ import argparse
 import glob
 import os
 import shutil
+import subprocess
 import sys
+import tempfile
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,8 +26,39 @@ def shell():
     embed()
 
 
+def color_str_red(s):
+    """Color string RED for writing to STDIN."""
+    return "\033[1m\033[91m{}\033[00m".format(s)
+
+
+def color_str_yellow(s):
+    """Color string YELLOW for writing to STDIN."""
+    return "\033[93m{}\033[00m".format(s)
+
+
+def run_cmd(cmd, error_str):
+    """Run the provided command (list of strings) in a separate process."""
+    try:
+        rr = subprocess.run(cmd, stdout=subprocess.PIPE, check=True)
+    except subprocess.CalledProcessError:
+        print(color_str_red(error_str), file=sys.stderr)
+        sys.exit(1)
+    return rr
+
+
+def extract_vlt_coverage(test_id, cov_stdout, cov_csv):
+    first_line_list = cov_stdout.split("\n")[0].split()
+    lines_covered = int(first_line_list[2].split('/')[0].lstrip('('))
+    total_lines = int(first_line_list[2].split('/')[1].rstrip(')'))
+    cov_percentage = float(first_line_list[3].rstrip('%'))
+    print("{},{},{},{:.2f}".format(test_id, lines_covered, total_lines,
+                                   cov_percentage),
+          file=cov_csv)
+
+
 def analyse_out(inp_dir):
     name = os.path.basename(inp_dir)
+
     print("processing {} ...".format(name))
     config, entries, dut, latest = load_results(inp_dir)
 
@@ -33,12 +66,65 @@ def analyse_out(inp_dir):
     fuzzer_cov = CoverageFormat(config)
     fmt = InputFormat(config)
     # inputs = [Input(ee, fmt, fuzzer_cov, end2end) for ee in entries]
+
+    # --------------------------------------------------------------------------
+    # Verilator HDL line coverage extraction --> for Usenix'21
+    # --------------------------------------------------------------------------
     inputs = []
+    prior_merged_cov_data = None
+
+    # Open CSV files to save Verilator coverage
+    line_cov_csv = open("{}/vlt_cov.csv".format(inp_dir), "w")
+    cum_line_cov_csv = open("{}/vlt_cum_cov.csv".format(inp_dir), "w")
+
+    # Write CSV file headers for VLT coverage
+    COV_CSV_HEADER = "Test-ID,Lines-Covered,Total-Lines,Line-Coverage-(%)"
+    print(COV_CSV_HEADER, file=line_cov_csv)
+    print(COV_CSV_HEADER, file=cum_line_cov_csv)
+
     for ee in entries:
-        inputs.append(Input(ee, fmt, fuzzer_cov, end2end))
-        shutil.move(
-            "/src/rfuzz/fuzzer/out/coverage.dat",
-            "/src/rfuzz/fuzzer/out/coverage_{}.dat".format(ee['entry']['id']))
+        test_id = ee['entry']['id']
+        test_cov_data = "{}/coverage_{}.dat".format(inp_dir, test_id)
+        merged_cov_data = "{}/merged_coverage_{}.dat".format(inp_dir, test_id)
+
+        # Extract coverage for current test
+        with tempfile.TemporaryDirectory() as tmp_annotations_dir:
+            inputs.append(Input(ee, fmt, fuzzer_cov, end2end))
+            shutil.move("{}/coverage.dat".format(inp_dir), test_cov_data)
+            rr = run_cmd([
+                "verilator_coverage", "--annotate", tmp_annotations_dir,
+                test_cov_data
+            ], "ERROR: generating annotated HDL line coverage.")
+            extract_vlt_coverage(test_id, rr.stdout.decode("utf-8"),
+                                 line_cov_csv)
+
+        # Combine coverage with previous tests (cumulative coverage)
+        with tempfile.TemporaryDirectory() as tmp_annotations_dir:
+            if prior_merged_cov_data is None:
+                run_cmd([
+                    "verilator_coverage", "-write", merged_cov_data,
+                    test_cov_data
+                ], "ERROR: writing initial merged coverage data.")
+            else:
+                run_cmd([
+                    "verilator_coverage", "-write", merged_cov_data,
+                    prior_merged_cov_data, test_cov_data
+                ], "ERROR: writing merged coverage data.")
+            rr = run_cmd([
+                "verilator_coverage", "--annotate", tmp_annotations_dir,
+                merged_cov_data
+            ], "ERROR: generating (merged) annotated HDL line coverage.")
+            extract_vlt_coverage(test_id, rr.stdout.decode("utf-8"),
+                                 cum_line_cov_csv)
+
+        # Set prior merged coverage data filename
+        prior_merged_cov_data = merged_cov_data
+
+    # Close coverage CSV files
+    line_cov_csv.close()
+    cum_line_cov_csv.close()
+    sys.exit(0)
+    # --------------------------------------------------------------------------
 
     # if "sodor" in os.path.basename(inp_dir):
     # riscv.print_instructions(inputs)
