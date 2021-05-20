@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash
 # BSD 3-Clause License
 #
 # Copyright (c) 2021, Timothy Trippel <trippel@umich.edu>
@@ -36,6 +36,23 @@ function check_exit_code() {
   fi
 }
 
+function launch_fuzzer() {
+  # Launch fuzz server in the background
+  rm -rf /tmp/fpga
+  mkdir /tmp/fpga
+  /src/rfuzz/build/${DUT}_server &
+
+  # Launch fuzzer
+  sleep 1
+  rm -rf out
+  if [[ -z ${DURATION_MINS-} ]]; then
+    cargo run --release -- -c -o out ../build/${DUT}.toml
+  else
+    timeout --foreground --preserve-status ${DURATION_MINS}m \
+      cargo run --release -- -c -o out ../build/${DUT}.toml
+  fi
+}
+
 ################################################################################
 # Set default DUT
 ################################################################################
@@ -58,23 +75,10 @@ cd fuzzer
 cargo build --release
 
 ################################################################################
-# Launch fuzz server in the background
+# Launch fuzz server & fuzzer
 ################################################################################
-rm -rf /tmp/fpga
-mkdir /tmp/fpga
-/src/rfuzz/build/${DUT}_server &
-
-################################################################################
-# Launch fuzzer
-################################################################################
-sleep 1
-rm -rf out
-if [[ -z ${DURATION_MINS-} ]]; then
-  cargo run --release -- -c -o out ../build/${DUT}.toml
-else
-  timeout --foreground --preserve-status ${DURATION_MINS}m \
-    cargo run --release -- -c -o out ../build/${DUT}.toml
-fi
+# TODO(ttrippel): should not have to run this twice to succeed.
+launch_fuzzer || launch_fuzzer
 check_exit_code
 
 ################################################################################
