@@ -2,7 +2,6 @@
 FIR := Sodor3Stage.fir
 DUT := Sodor3Stage
 
-DOCKER_IMAGE ?= rfuzz/env
 ROOT := $(shell pwd)
 BUILD := $(ROOT)/build
 INPUT := $(ROOT)/benchmarks/$(FIR)
@@ -129,29 +128,4 @@ run: $(FUZZ_SERVER) $(E2ECOV)
 	mkdir /tmp/fpga
 	$(FUZZ_SERVER)
 
-################################################################################
-# Docker Environment Target
-################################################################################
-build-env:
-	docker build -t $(DOCKER_IMAGE) .
-
-env:
-	docker run -it --rm \
-		-v $(shell pwd)/analysis:/src/rfuzz/analysis \
-		-v $(shell pwd)/benchmarks:/src/rfuzz/benchmarks \
-		-v $(shell pwd)/build:/src/rfuzz/build \
-		-v $(shell pwd)/doc:/src/rfuzz/doc \
-		-v $(shell pwd)/e2e:/src/rfuzz/e2e \
-		-v $(shell pwd)/fpga:/src/rfuzz/fpga \
-		-v $(shell pwd)/fuzzer:/src/rfuzz/fuzzer \
-		-v $(shell pwd)/harness:/src/rfuzz/harness \
-		-v $(shell pwd)/instrumentation:/src/rfuzz/instrumentation \
-		-v $(shell pwd)/midas:/src/rfuzz/midas \
-		-v $(shell pwd)/results:/src/rfuzz/results \
-		-v $(shell pwd)/verilator:/src/rfuzz/verilator \
-		-v $(shell pwd)/Makefile:/src/rfuzz/Makefile \
-		-v $(shell pwd)/run.sh:/src/rfuzz/run.sh \
-		-v $(shell pwd)/run_vlt_cov.sh:/src/rfuzz/run_vlt_cov.sh \
-		-t $(DOCKER_IMAGE) /bin/bash
-
-.PHONY: build-env env instrumentation run
+.PHONY: instrumentation run

@@ -37,6 +37,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get autoremove -y
 # Setup directory structure
 ENV SRC=/src
 RUN mkdir -p $SRC && chmod a+rwx $SRC
+ENV RFUZZ=/src/rfuzz
+RUN mkdir -p $RFUZZ && chmod a+rwx $RFUZZ
 
 # Install packages
 RUN apt-get update && apt-get install -y \
@@ -72,12 +74,5 @@ RUN apt-get update && apt-get install -y sbt
 # Configure MATPLOTLIB to run headless
 RUN mkdir -p ~/.config/matplotlib
 RUN echo "backend: agg" > ~/.config/matplotlib/matplotlibrc
-
-# Install RFUZZ
-RUN apt-get update && apt-get install -y git
-RUN cd $SRC && git clone https://github.com/timothytrippel/rfuzz.git
-ENV RFUZZ=/src/rfuzz
-RUN cd $RFUZZ && git checkout hwfuzz-usenix21
-RUN cd $RFUZZ && git submodule update --init
 
 WORKDIR $RFUZZ

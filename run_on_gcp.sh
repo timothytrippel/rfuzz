@@ -61,7 +61,7 @@ LINE_SEP='---------------------------------------------------------------------'
 ################################################################################
 echo -e "${GREEN}${LINE_SEP}${NC}"
 echo -e "${GREEN}Building Docker image and pushing to registry ...${NC}"
-DOCKER_IMAGE=$DOCKER_IMAGE make build-env
+docker build -t $DOCKER_IMAGE .
 docker push ${DOCKER_IMAGE}:latest
 echo -e "${GREEN}Done.${NC}"
 
