@@ -40,21 +40,20 @@ ENV RFUZZ=/src/rfuzz
 RUN mkdir -p $SRC $RFUZZ && chmod a+rwx $SRC $RFUZZ
 
 # Install packages
-RUN apt-get install -y \
+RUN apt-get update && apt-get install -y \
       build-essential \
       meson \
       pkg-config \
       openjdk-8-jdk \
       verilator \
-      cargo
-RUN apt-get install -y \
+      cargo \
       python3-toml \
       python3-numpy \
       python3-matplotlib \
       graphviz
 
 # Install Verilator v4.101
-RUN apt-get install -y \
+RUN apt-get update && apt-get install -y \
       git \
       autoconf \
       flex \

@@ -36,25 +36,37 @@ function check_exit_code() {
   fi
 }
 
+################################################################################
 # Set default DUT
+################################################################################
 DUT="${DUT:-Sodor3Stage}"
 
+################################################################################
 # Cleanup prior builds
+################################################################################
 make clean
 
+################################################################################
 # Build fuzz server for target DUT
+################################################################################
 make FIR=${DUT}.fir DUT=$DUT bin
 
+################################################################################
 # Build fuzzer
+################################################################################
 cd fuzzer
 cargo build --release
 
+################################################################################
 # Launch fuzz server in the background
+################################################################################
 rm -rf /tmp/fpga
 mkdir /tmp/fpga
 /src/rfuzz/build/${DUT}_server &
 
+################################################################################
 # Launch fuzzer
+################################################################################
 sleep 1
 rm -rf out
 if [[ -z ${DURATION_MINS-} ]]; then
@@ -64,3 +76,57 @@ else
     cargo run --release -- -c -o out ../build/${DUT}.toml
 fi
 check_exit_code
+
+################################################################################
+# Compute coverage results
+################################################################################
+cd $RFUZZ
+./analysis/analysis.py fuzzer/out
+
+################################################################################
+# Save data to GCS/Shutdown VM
+################################################################################
+if [ $RUN_ON_GCP -eq 1 ]; then
+
+  ##############################################################################
+  # Get GCP configuration info
+  ##############################################################################
+  # Metadata Server URLS
+  METADATA_URL="http://metadata.google.internal/computeMetadata/v1"
+  PROJECT_ID_URL="$METADATA_URL/project/project-id"
+  ZONE_URL="$METADATA_URL/instance/zone"
+  INSTANCE_NAME_URL="$METADATA_URL/instance/name"
+  AUTH_TOKEN_URL="$METADATA_URL/instance/service-accounts/default/token"
+
+  # Get GCE VM instance info
+  PROJECT_ID=$(curl -H "Metadata-Flavor: Google" $PROJECT_ID_URL)
+  ZONE=$(curl -H "Metadata-Flavor: Google" $ZONE_URL)
+  IFS_BACKUP=$IFS
+  IFS=$'/'
+  ZONE_SPLIT=($ZONE)
+  ZONE="${ZONE_SPLIT[3]}"
+  IFS=$IFS_BACKUP
+  INSTANCE_NAME=$(curl -H "Metadata-Flavor: Google" $INSTANCE_NAME_URL)
+
+  # Get GCE metadata authorization token
+  TOKEN=$(curl -H "Metadata-Flavor: Google" $AUTH_TOKEN_URL | python3 -c \
+    "import sys, json; print(json.load(sys.stdin)['access_token'])")
+
+  ##############################################################################
+  # Save results to GCS
+  ##############################################################################
+  GCS_API_URL="https://storage.googleapis.com/upload/storage/v1/b"
+  find fuzzer/out -type f -exec curl -X POST --data-binary @{} \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: text" \
+    "$GCS_API_URL/$GCS_DATA_BUCKET/o?uploadType=media&name=$INSTANCE_NAME/{}" \; \
+    >/dev/null
+
+  ##############################################################################
+  # Delete GCE VM instance
+  ##############################################################################
+  GCE_API_URL="https://www.googleapis.com/compute/v1/projects"
+  GCE_INSTANCE_URL="$GCE_API_URL/$PROJECT_ID/zones/$ZONE/instances/$INSTANCE_NAME"
+  curl -XDELETE -H "Authorization: Bearer $TOKEN" $GCE_INSTANCE_URL
+fi
+exit 0

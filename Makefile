@@ -2,6 +2,7 @@
 FIR := Sodor3Stage.fir
 DUT := Sodor3Stage
 
+DOCKER_IMAGE ?= rfuzz/env
 ROOT := $(shell pwd)
 BUILD := $(ROOT)/build
 INPUT := $(ROOT)/benchmarks/$(FIR)
@@ -17,7 +18,6 @@ E2ECOV_HARNESS := $(BUILD)/$(DUT)_E2EHarness.v
 E2ECOV := $(BUILD)/$(DUT)_cov
 
 SBT := sbt
-
 
 
 default: $(VERILATOR_HARNESS)
@@ -133,7 +133,7 @@ run: $(FUZZ_SERVER) $(E2ECOV)
 # Docker Environment Target
 ################################################################################
 build-env:
-	docker build -t rfuzz/env .
+	docker build -t $(DOCKER_IMAGE) .
 
 env:
 	docker run -it --rm \
@@ -152,6 +152,6 @@ env:
 		-v $(shell pwd)/Makefile:/src/rfuzz/Makefile \
 		-v $(shell pwd)/run.sh:/src/rfuzz/run.sh \
 		-v $(shell pwd)/run_vlt_cov.sh:/src/rfuzz/run_vlt_cov.sh \
-		-t rfuzz/env /bin/bash
+		-t $(DOCKER_IMAGE) /bin/bash
 
 .PHONY: build-env env instrumentation run
