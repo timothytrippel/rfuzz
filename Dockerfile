@@ -46,6 +46,7 @@ RUN apt-get update && apt-get install -y \
       openjdk-8-jdk \
       verilator \
       cargo \
+      curl \
       python3-toml \
       python3-numpy \
       python3-matplotlib \
@@ -81,3 +82,4 @@ RUN cd $RFUZZ && git checkout hwfuzz-usenix21
 RUN cd $RFUZZ && git submodule update --init
 
 WORKDIR $RFUZZ
+CMD ["./run.sh"]

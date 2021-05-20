@@ -30,11 +30,12 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-function check_exit_code() {
-  if (($? != 0 && $? != 124)); then
-    exit 1
-  fi
-}
+#function check_exit_code() {
+#echo "Fuzzer exit Code: $?"
+#if (($? != 0 && $? != 124)); then
+#exit 1
+#fi
+#}
 
 function launch_fuzzer() {
   # Launch fuzz server in the background
@@ -79,7 +80,7 @@ cargo build --release
 ################################################################################
 # TODO(ttrippel): should not have to run this twice to succeed.
 launch_fuzzer || launch_fuzzer
-check_exit_code
+#check_exit_code
 
 ################################################################################
 # Compute coverage results
@@ -91,6 +92,7 @@ cd $RFUZZ
 # Save data to GCS/Shutdown VM
 ################################################################################
 if [ $RUN_ON_GCP -eq 1 ]; then
+  cd fuzzer/out
 
   ##############################################################################
   # Get GCP configuration info
@@ -119,12 +121,14 @@ if [ $RUN_ON_GCP -eq 1 ]; then
   ##############################################################################
   # Save results to GCS
   ##############################################################################
+  cd $RFUZZ/fuzzer/out
   GCS_API_URL="https://storage.googleapis.com/upload/storage/v1/b"
-  find fuzzer/out -type f -exec curl -X POST --data-binary @{} \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: text" \
-    "$GCS_API_URL/$GCS_DATA_BUCKET/o?uploadType=media&name=$INSTANCE_NAME/{}" \; \
-    >/dev/null
+  for FILENAME in $(find . -type f -exec basename {} \;); do
+    curl -X POST --data-binary @$FILENAME \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: text" \
+      "$GCS_API_URL/$GCS_DATA_BUCKET/o?uploadType=media&name=$INSTANCE_NAME/$FILENAME" >/dev/null
+  done
 
   ##############################################################################
   # Delete GCE VM instance

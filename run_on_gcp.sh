@@ -44,9 +44,10 @@ GCP_SCOPES="default,compute-rw,storage-rw"
 ################################################################################
 # Set parameters
 ################################################################################
-NUM_INSTANCES=1
-DURATION_MINS=1
-DUTS="FFTSmall"
+NUM_INSTANCES=2
+DURATION_MINS=60
+#DUTS="FFTSmall"
+DUTS="FFTSmall Sodor3Stage TLI2C TLPWM TLSPI TLUART"
 DOCKER_IMAGE="gcr.io/$GCP_PROJECT_ID/rfuzz/env"
 
 ################################################################################
@@ -69,15 +70,16 @@ echo -e "${GREEN}Done.${NC}"
 # Launch VM on GCE
 ################################################################################
 for DUT in $DUTS; do
+  DUT_LOWERCASE=$(echo "$DUT" | awk '{print tolower($0)}')
   echo -e "${GREEN}${LINE_SEP}${NC}"
   echo -e "${GREEN}Launching VMs to fuzz $DUT ...${NC}"
   for INSTANCE_NUM in $(seq 0 $(expr $NUM_INSTANCES - 1)); do
     echo -e "${GREEN}${LINE_SEP}${NC}"
     echo -e "${GREEN}Launching VM instance #${INSTANCE_NUM} ...${NC}"
-    # Delete existing data in GCS
+    # TODO(ttrippel): Delete existing data in GCS
     # Launch VM
     gcloud compute instances create-with-container \
-      "rfuzz-$(echo "$DUT" | awk '{print tolower($0)}')-${INSTANCE_NUM}" \
+      "rfuzz-${DUT_LOWERCASE}-${DURATION_MINS}m-${INSTANCE_NUM}" \
       --project=${GCP_PROJECT_ID} \
       --container-image "${DOCKER_IMAGE}:latest" \
       --container-stdin \
@@ -91,8 +93,7 @@ for DUT in $DUTS; do
       --container-env DUT=$DUT \
       --container-env DURATION_MINS=$DURATION_MINS \
       --container-env GCS_DATA_BUCKET=$GCS_DATA_BUCKET \
-      --container-env RUN_ON_GCP=1 \
-      --container-command=/bin/bash
+      --container-env RUN_ON_GCP=1
     echo -e "${GREEN}VM launched!${NC}"
   done
   echo -e "${GREEN}Done.${NC}"
