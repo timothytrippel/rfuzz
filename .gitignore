@@ -1,6 +1,7 @@
 build/
 .ivy2
 *.stamp
+gcp-data/
 
 # toplevel log files are ignored
 # move them to doc or fuzzer/log

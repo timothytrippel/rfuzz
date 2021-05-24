@@ -45,7 +45,7 @@ GCP_SCOPES="default,compute-rw,storage-rw"
 # Set parameters
 ################################################################################
 NUM_INSTANCES=2
-DURATION_MINS=60
+DURATION_MINS=1440
 #DUTS="FFTSmall"
 DUTS="FFTSmall Sodor3Stage TLI2C TLPWM TLSPI TLUART"
 DOCKER_IMAGE="gcr.io/$GCP_PROJECT_ID/rfuzz/env"
